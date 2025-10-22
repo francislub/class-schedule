@@ -11,7 +11,7 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "Bugema University - Class Schedule System",
   description: "Comprehensive class schedule management system for Bugema University",
-  generator: "v0.app",
+  generator: "larks tech hub",
 }
 
 export default function RootLayout({
