@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  email     String   @unique
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Department {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String   @unique
+  code        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  hods        HOD[]
+  students    Student[]
+  courseUnits CourseUnit[]
+}
+
+model HOD {
+  id           String     @id @default(auto()) @map("_id") @db.ObjectId
+  email        String     @unique
+  name         String
+  phone        String?
+  departmentId String     @db.ObjectId
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model Student {
+  id              String     @id @default(auto()) @map("_id") @db.ObjectId
+  email           String     @unique
+  name            String
+  studentNumber   String     @unique
+  phone           String?
+  departmentId    String     @db.ObjectId
+  department      Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  yearOfStudy     Int
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+}
+
+model CourseUnit {
+  id           String     @id @default(auto()) @map("_id") @db.ObjectId
+  code         String     @unique
+  name         String
+  description  String?
+  credits      Int        @default(3)
+  departmentId String     @db.ObjectId
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  lecturer     String?
+  lecturerContact String?
+  venue        String?
+  dayOfWeek    String?
+  startTime    String?
+  endTime      String?
+  semester     String?
+  yearOfStudy  Int?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model VerificationCode {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  email     String
+  code      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  
+  @@index([email])
+}
