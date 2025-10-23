@@ -1,4 +1,4 @@
-import { NextResponse } from "next/headers"
+import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import prisma from "@/lib/prisma"
 
@@ -11,12 +11,10 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const sessionData = JSON.parse(session.value)
-    const hodId = sessionData.hodId
+    const { email, departmentId } = JSON.parse(session.value)
 
-    // Get HOD details
-    const hod = await prisma.hOD.findUnique({
-      where: { id: hodId },
+    const hod = await prisma.hOD.findFirst({
+      where: { email, departmentId },
       include: {
         department: true,
       },
@@ -26,44 +24,82 @@ export async function GET() {
       return NextResponse.json({ error: "HOD not found" }, { status: 404 })
     }
 
-    // Get statistics for this department
-    const [courseCount, studentCount] = await Promise.all([
+    const [courseCount, studentCount, scheduledCount, venueCount] = await Promise.all([
       prisma.courseUnit.count({
         where: { departmentId: hod.departmentId },
       }),
       prisma.student.count({
         where: { departmentId: hod.departmentId },
       }),
+      prisma.courseUnit.count({
+        where: {
+          departmentId: hod.departmentId,
+          AND: [{ venue: { not: null } }, { startTime: { not: null } }],
+        },
+      }),
+      prisma.courseUnit.count({
+        where: {
+          departmentId: hod.departmentId,
+          venue: { not: null },
+        },
+      }),
     ])
 
-    // Get courses by year
     const coursesByYear = await prisma.courseUnit.groupBy({
-      by: ["year"],
-      where: { departmentId: hod.departmentId },
+      by: ["yearOfStudy"],
+      where: {
+        departmentId: hod.departmentId,
+        yearOfStudy: { not: null },
+      },
       _count: true,
     })
 
-    // Get courses by semester
+    const yearStats = coursesByYear.map((item) => ({
+      year: `Year ${item.yearOfStudy}`,
+      count: item._count,
+    }))
+
     const coursesBySemester = await prisma.courseUnit.groupBy({
       by: ["semester"],
-      where: { departmentId: hod.departmentId },
+      where: {
+        departmentId: hod.departmentId,
+        semester: { not: null },
+      },
       _count: true,
+    })
+
+    const semesterStats = coursesBySemester.map((item) => ({
+      semester: item.semester || "Unassigned",
+      count: item._count,
+    }))
+
+    const coursesByDay = await prisma.courseUnit.groupBy({
+      by: ["dayOfWeek"],
+      where: {
+        departmentId: hod.departmentId,
+        dayOfWeek: { not: null },
+      },
+      _count: true,
+    })
+
+    const daysOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    const weeklyStats = daysOrder.map((day) => {
+      const found = coursesByDay.find((item) => item.dayOfWeek === day)
+      return {
+        day,
+        classes: found ? found._count : 0,
+      }
     })
 
     return NextResponse.json({
-      stats: {
-        courses: courseCount,
-        students: studentCount,
-        department: hod.department.name,
-      },
-      coursesByYear: coursesByYear.map((item) => ({
-        year: item.year,
-        count: item._count,
-      })),
-      coursesBySemester: coursesBySemester.map((item) => ({
-        semester: item.semester,
-        count: item._count,
-      })),
+      hod,
+      courseCount,
+      studentCount,
+      scheduledCount,
+      venueCount,
+      yearStats,
+      semesterStats,
+      weeklyStats,
     })
   } catch (error) {
     console.error("[v0] HOD stats error:", error)

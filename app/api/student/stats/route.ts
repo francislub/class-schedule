@@ -1,4 +1,4 @@
-import { NextResponse } from "next/headers"
+import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import prisma from "@/lib/prisma"
 
@@ -11,10 +11,8 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const sessionData = JSON.parse(session.value)
-    const studentId = sessionData.studentId
+    const { studentId, departmentId } = JSON.parse(session.value)
 
-    // Get student details
     const student = await prisma.student.findUnique({
       where: { id: studentId },
       include: {
@@ -26,43 +24,90 @@ export async function GET() {
       return NextResponse.json({ error: "Student not found" }, { status: 404 })
     }
 
-    // Get course statistics for this student's year and department
-    const [totalCourses, semester1Courses, semester2Courses] = await Promise.all([
+    const [myCourseCount, totalCredits, scheduledCount] = await Promise.all([
       prisma.courseUnit.count({
         where: {
           departmentId: student.departmentId,
-          year: student.year,
+          yearOfStudy: student.yearOfStudy,
+        },
+      }),
+      prisma.courseUnit.aggregate({
+        where: {
+          departmentId: student.departmentId,
+          yearOfStudy: student.yearOfStudy,
+        },
+        _sum: {
+          credits: true,
         },
       }),
       prisma.courseUnit.count({
         where: {
           departmentId: student.departmentId,
-          year: student.year,
-          semester: 1,
-        },
-      }),
-      prisma.courseUnit.count({
-        where: {
-          departmentId: student.departmentId,
-          year: student.year,
-          semester: 2,
+          yearOfStudy: student.yearOfStudy,
+          AND: [{ venue: { not: null } }, { startTime: { not: null } }],
         },
       }),
     ])
 
+    const coursesByDay = await prisma.courseUnit.groupBy({
+      by: ["dayOfWeek"],
+      where: {
+        departmentId: student.departmentId,
+        yearOfStudy: student.yearOfStudy,
+        dayOfWeek: { not: null },
+      },
+      _count: true,
+    })
+
+    const daysOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    const weeklySchedule = daysOrder.map((day) => {
+      const found = coursesByDay.find((item) => item.dayOfWeek === day)
+      return {
+        day: day.substring(0, 3), // Shorten day names for chart
+        classes: found ? found._count : 0,
+      }
+    })
+
+    const coursesBySemester = await prisma.courseUnit.groupBy({
+      by: ["semester"],
+      where: {
+        departmentId: student.departmentId,
+        yearOfStudy: student.yearOfStudy,
+        semester: { not: null },
+      },
+      _count: true,
+    })
+
+    const semesterStats = coursesBySemester.map((item) => ({
+      semester: item.semester || "Unassigned",
+      count: item._count,
+    }))
+
+    const courses = await prisma.courseUnit.findMany({
+      where: {
+        departmentId: student.departmentId,
+        yearOfStudy: student.yearOfStudy,
+      },
+      select: {
+        code: true,
+        credits: true,
+      },
+      take: 10, // Limit to 10 courses for readability
+    })
+
+    const creditStats = courses.map((course) => ({
+      course: course.code,
+      credits: course.credits,
+    }))
+
     return NextResponse.json({
-      student: {
-        name: student.name,
-        email: student.email,
-        studentId: student.studentId,
-        year: student.year,
-        department: student.department.name,
-      },
-      stats: {
-        totalCourses,
-        semester1Courses,
-        semester2Courses,
-      },
+      student,
+      myCourseCount,
+      totalCredits: totalCredits._sum.credits || 0,
+      scheduledCount,
+      weeklySchedule,
+      semesterStats,
+      creditStats,
     })
   } catch (error) {
     console.error("[v0] Student stats error:", error)

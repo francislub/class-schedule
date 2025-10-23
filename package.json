@@ -10,6 +10,10 @@
   },
   "dependencies": {
     "@prisma/client": "latest",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-label": "^2.1.7",
+    "@radix-ui/react-select": "^2.2.6",
+    "@radix-ui/react-toast": "^1.2.15",
     "@vercel/analytics": "latest",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -18,18 +22,22 @@
     "nodemailer": "latest",
     "react": "19.2.0",
     "react-dom": "19.2.0",
+    "recharts": "^3.3.0",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "tw-animate-css": "latest"
   },
   "devDependencies": {
+    "@next/swc-win32-x64-msvc": "^16.0.0",
+    "@tailwindcss/postcss": "^4.1.15",
     "@types/node": "^22",
     "@types/nodemailer": "^6.4.14",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
-    "postcss": "^8.5",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
     "prisma": "^6.2.0",
-    "tailwindcss": "^4.1.9",
+    "tailwindcss": "^4.1.15",
     "typescript": "^5"
   }
 }
