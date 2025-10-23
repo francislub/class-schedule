@@ -24,6 +24,25 @@ export async function GET() {
       return NextResponse.json({ error: "Student not found" }, { status: 404 })
     }
 
+    console.log("[v0] Student dashboard - Student ID:", studentId)
+    console.log("[v0] Student dashboard - Department ID:", student.departmentId)
+    console.log("[v0] Student dashboard - Year of Study:", student.yearOfStudy)
+
+    const allDeptCoursesDebug = await prisma.courseUnit.findMany({
+      where: {
+        departmentId: student.departmentId,
+      },
+      select: {
+        code: true,
+        name: true,
+        yearOfStudy: true,
+        credits: true,
+        venue: true,
+        startTime: true,
+      },
+    })
+    console.log("[v0] All courses in department:", JSON.stringify(allDeptCoursesDebug, null, 2))
+
     const [myCourseCount, totalCredits, scheduledCount, totalDeptCourses, avgCreditsData] = await Promise.all([
       prisma.courseUnit.count({
         where: {
@@ -63,6 +82,12 @@ export async function GET() {
       }),
     ])
 
+    console.log("[v0] My Course Count:", myCourseCount)
+    console.log("[v0] Total Credits:", totalCredits._sum.credits)
+    console.log("[v0] Scheduled Count:", scheduledCount)
+    console.log("[v0] Total Dept Courses:", totalDeptCourses)
+    console.log("[v0] Avg Credits:", avgCreditsData._avg.credits)
+
     const coursesByDay = await prisma.courseUnit.groupBy({
       by: ["dayOfWeek"],
       where: {
@@ -77,7 +102,7 @@ export async function GET() {
     const weeklySchedule = daysOrder.map((day) => {
       const found = coursesByDay.find((item) => item.dayOfWeek === day)
       return {
-        day: day.substring(0, 3), // Shorten day names for chart
+        day: day.substring(0, 3),
         classes: found ? found._count : 0,
       }
     })
@@ -106,7 +131,7 @@ export async function GET() {
         code: true,
         credits: true,
       },
-      take: 10, // Limit to 10 courses for readability
+      take: 10,
     })
 
     const creditStats = courses.map((course) => ({
