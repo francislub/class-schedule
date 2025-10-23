@@ -33,7 +33,7 @@ export default function HomePage() {
                 </div>
                 <h2 className="text-2xl font-bold mb-3 text-center">Admin</h2>
                 <p className="text-muted-foreground text-center text-sm">
-                  Manage departments, HODs, and system settings
+                  Manage departments, HODs, and system setting
                 </p>
               </CardContent>
             </Card>
