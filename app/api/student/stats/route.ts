@@ -24,7 +24,7 @@ export async function GET() {
       return NextResponse.json({ error: "Student not found" }, { status: 404 })
     }
 
-    const [myCourseCount, totalCredits, scheduledCount] = await Promise.all([
+    const [myCourseCount, totalCredits, scheduledCount, totalDeptCourses, avgCreditsData] = await Promise.all([
       prisma.courseUnit.count({
         where: {
           departmentId: student.departmentId,
@@ -45,6 +45,20 @@ export async function GET() {
           departmentId: student.departmentId,
           yearOfStudy: student.yearOfStudy,
           AND: [{ venue: { not: null } }, { startTime: { not: null } }],
+        },
+      }),
+      prisma.courseUnit.count({
+        where: {
+          departmentId: student.departmentId,
+        },
+      }),
+      prisma.courseUnit.aggregate({
+        where: {
+          departmentId: student.departmentId,
+          yearOfStudy: student.yearOfStudy,
+        },
+        _avg: {
+          credits: true,
         },
       }),
     ])
@@ -105,6 +119,8 @@ export async function GET() {
       myCourseCount,
       totalCredits: totalCredits._sum.credits || 0,
       scheduledCount,
+      totalDeptCourses,
+      avgCredits: Math.round((avgCreditsData._avg.credits || 0) * 10) / 10,
       weeklySchedule,
       semesterStats,
       creditStats,
